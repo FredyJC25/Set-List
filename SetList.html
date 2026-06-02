@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Songbook" />
+<title>Songbook</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --accent: #7F77DD;
+    --accent-dark: #3C3489;
+    --accent-light: #EEEDFE;
+    --accent-text: #26215C;
+    --bg: #ffffff;
+    --bg2: #f5f4f2;
+    --bg3: #eeede9;
+    --text: #1a1a18;
+    --muted: #6b6a66;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --danger: #E24B4A;
+    --danger-bg: #FCEBEB;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --bg2: #2c2c2e;
+      --bg3: #3a3a3c;
+      --text: #f2f2f0;
+      --muted: #8e8e93;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.18);
+      --accent-light: #26215C;
+      --accent-text: #AFA9EC;
+      --danger-bg: #3a1f1f;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #header {
+    padding: 14px 16px 10px;
+    border-bottom: 0.5px solid var(--border2);
+    background: var(--bg);
+    position: relative;
+    z-index: 10;
+  }
+  #header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  #header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+    flex: 1;
+  }
+  #header h1 span { color: var(--text); }
+
+  #header-actions { display: flex; align-items: center; gap: 6px; }
+
+  #btn-lang {
+    background: var(--bg2);
+    color: var(--muted);
+    border: 0.5px solid var(--border2);
+    border-radius: 100px;
+    padding: 6px 11px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  #btn-lang:active { opacity: 0.7; }
+
+  #btn-new {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    padding: 7px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #btn-new:active { opacity: 0.8; }
+
+  #search-wrap { position: relative; }
+  #search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: 0.4; pointer-events: none; }
+  #search {
+    width: 100%;
+    padding: 9px 10px 9px 34px;
+    font-size: 15px;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    background: var(--bg2);
+    color: var(--text);
+    -webkit-appearance: none;
+  }
+  #search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  #list-view {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 12px 80px;
+  }
+
+  .song-card {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 13px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border: 0.5px solid var(--border);
+    transition: transform 0.1s;
+    -webkit-user-select: none;
+  }
+  .song-card:active { transform: scale(0.98); }
+  .song-card .sc-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .song-card .sc-meta { font-size: 13px; color: var(--muted); }
+  .song-card .sc-tags { margin-top: 6px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .sc-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--accent-light);
+    color: var(--accent-text);
+  }
+
+  #empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--muted);
+  }
+  #empty-state .e-icon { font-size: 48px; margin-bottom: 12px; }
+  #empty-state p { font-size: 14px; line-height: 1.6; }
+
+  #detail-panel {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  }
+  #detail-panel.open { transform: translateX(0); }
+
+  #panel-header {
+    padding: 14px 16px 12px;
+    border-bottom: 0.5px solid var(--border2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #btn-back {
+    background: var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: 100px;
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text);
+  }
+  #btn-back:active { opacity: 0.7; }
+  #panel-title { flex: 1; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #btn-edit-toggle {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  #btn-edit-toggle:active { opacity: 0.8; }
+
+  #panel-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+  #view-content { padding: 20px 18px 40px; }
+  #view-content h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
+  #view-content .vc-artist { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+  #view-content .vc-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  #view-content .vc-lyrics {
+    font-size: 15px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    font-family: 'Menlo', 'Courier New', monospace;
+    color: var(--text);
+  }
+
+  #edit-content { padding: 16px 16px 80px; display: flex; flex-direction: column; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .field input, .field textarea {
+    padding: 10px 12px;
+    font-size: 15px;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    background: var(--bg2);
+    color: var(--text);
+    font-family: inherit;
+    -webkit-appearance: none;
+  }
+  .field textarea {
+    font-family: 'Menlo', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    min-height: 300px;
+    resize: none;
+  }
+  .field input:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  #panel-actions {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--bg);
+    border-top: 0.5px solid var(--border2);
+    display: flex;
+    gap: 8px;
+    z-index: 101;
+  }
+  #panel-actions button { flex: 1; padding: 12px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; border: none; }
+  #btn-save { background: var(--accent); color: white; }
+  #btn-save:active { opacity: 0.85; }
+  #btn-delete { background: var(--danger-bg); color: var(--danger); flex: 0 0 auto; width: 48px; font-size: 18px; }
+  #btn-delete:active { opacity: 0.8; }
+
+  #toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.82);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 100px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 200;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+
+  #btn-export {
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    right: 16px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: 100px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  #btn-export:active { opacity: 0.7; }
+
+  #song-count { font-size: 12px; color: var(--muted); padding: 4px 16px 2px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-top">
+    <h1>🎵 <span id="app-title">Songbook</span></h1>
+    <div id="header-actions">
+      <button id="btn-lang">ES</button>
+      <button id="btn-new">+ New</button>
+    </div>
+  </div>
+  <div id="search-wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search" type="search" autocomplete="off" />
+  </div>
+</div>
+
+<div id="song-count"></div>
+<div id="list-view"></div>
+
+<button id="btn-export">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  <span id="lbl-export">Backup JSON</span>
+</button>
+
+<div id="detail-panel">
+  <div id="panel-header">
+    <button id="btn-back">← <span id="lbl-back">Back</span></button>
+    <span id="panel-title"></span>
+    <button id="btn-edit-toggle">Edit</button>
+  </div>
+  <div id="panel-body">
+    <div id="view-content"></div>
+    <div id="edit-content" style="display:none"></div>
+  </div>
+  <div id="panel-actions" style="display:none">
+    <button id="btn-save">Save</button>
+    <button id="btn-delete">🗑</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const DB_KEY = 'cancionero_v2';
+const LANG_KEY = 'cancionero_lang';
+let songs = [];
+let currentId = null;
+let isEditing = false;
+let lang = localStorage.getItem(LANG_KEY) || 'en';
+
+const T = {
+  en: {
+    appTitle: 'Songbook',
+    btnNew: '+ New',
+    btnLang: 'ES',
+    searchPlaceholder: 'Search by title, artist, lyrics…',
+    songCount: n => n + ' song' + (n !== 1 ? 's' : ''),
+    exportLabel: 'Backup JSON',
+    back: 'Back',
+    edit: 'Edit',
+    preview: 'Preview',
+    save: 'Save',
+    noTitle: 'Untitled',
+    unknownArtist: 'Unknown artist',
+    emptyNew: 'No songs yet.<br>Tap <strong>+ New</strong> to start.',
+    emptySearch: q => 'No songs matching <strong>"' + q + '"</strong>',
+    confirmDelete: 'Delete this song? This cannot be undone.',
+    toastSaved: '✓ Saved',
+    toastDeleted: 'Song deleted',
+    toastBackup: 'Backup downloaded 📁',
+    labelTitle: 'Title',
+    labelArtist: 'Artist / Project',
+    labelTags: 'Tags (comma separated)',
+    labelLyrics: 'Lyrics',
+    placeholderTitle: 'Song name',
+    placeholderArtist: 'Your artist name',
+    placeholderTags: 'pop, love, ballad, demo…',
+    defaultSongTitle: 'My first song',
+    defaultSongArtist: 'My project',
+    defaultSongTags: 'pop, draft',
+    defaultSongLyrics: 'Verse 1:\n[Your first verse here]\n\nChorus:\n[Your chorus here]\n\nVerse 2:\n[Second verse]\n\nBridge:\n[The bridge]\n\nFinal chorus:\n[Repeat chorus]',
+    langToast: '🇺🇸 English',
+  },
+  es: {
+    appTitle: 'Cancionero',
+    btnNew: '+ Nueva',
+    btnLang: 'EN',
+    searchPlaceholder: 'Buscar por título, artista, letra…',
+    songCount: n => n + ' canción' + (n !== 1 ? 'es' : ''),
+    exportLabel: 'Backup JSON',
+    back: 'Volver',
+    edit: 'Editar',
+    preview: 'Vista',
+    save: 'Guardar',
+    noTitle: 'Sin título',
+    unknownArtist: 'Artista desconocido',
+    emptyNew: 'Aún no hay canciones.<br>Pulsa <strong>+ Nueva</strong> para empezar.',
+    emptySearch: q => 'No hay canciones que coincidan con <strong>"' + q + '"</strong>',
+    confirmDelete: '¿Eliminar esta canción? Esta acción no se puede deshacer.',
+    toastSaved: '✓ Guardado',
+    toastDeleted: 'Canción eliminada',
+    toastBackup: 'Backup descargado 📁',
+    labelTitle: 'Título',
+    labelArtist: 'Artista / Proyecto',
+    labelTags: 'Etiquetas (separadas por coma)',
+    labelLyrics: 'Letra',
+    placeholderTitle: 'Nombre de la canción',
+    placeholderArtist: 'Tu nombre artístico',
+    placeholderTags: 'pop, amor, balada, demo…',
+    defaultSongTitle: 'Mi primera canción',
+    defaultSongArtist: 'Mi proyecto',
+    defaultSongTags: 'pop, borrador',
+    defaultSongLyrics: 'Verso 1:\n[Tu primera estrofa aquí]\n\nCoro:\n[Tu coro aquí]\n\nVerso 2:\n[Segunda estrofa]\n\nPuente:\n[El puente]\n\nCoro final:\n[Repite el coro]',
+    langToast: '🇬🇹 Español',
+  }
+};
+
+function t() { return T[lang]; }
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.title = t().appTitle;
+  document.querySelector('meta[name="apple-mobile-web-app-title"]').content = t().appTitle;
+  document.getElementById('app-title').textContent = t().appTitle;
+  document.getElementById('btn-new').textContent = t().btnNew;
+  document.getElementById('btn-lang').textContent = t().btnLang;
+  document.getElementById('search').placeholder = t().searchPlaceholder;
+  document.getElementById('lbl-export').textContent = t().exportLabel;
+  document.getElementById('lbl-back').textContent = t().back;
+  document.getElementById('btn-edit-toggle').textContent = isEditing ? t().preview : t().edit;
+  document.getElementById('btn-save').textContent = t().save;
+  updateCount();
+  renderList(document.getElementById('search').value);
+  if (currentId) renderPanel();
+}
+
+function toggleLang() {
+  lang = lang === 'en' ? 'es' : 'en';
+  localStorage.setItem(LANG_KEY, lang);
+  applyLang();
+  toast(t().langToast);
+}
+
+function loadSongs() {
+  try { songs = JSON.parse(localStorage.getItem(DB_KEY)) || []; } catch { songs = []; }
+  if (!songs.length) {
+    const l = t();
+    songs = [{
+      id: uid(),
+      title: l.defaultSongTitle,
+      artist: l.defaultSongArtist,
+      tags: l.defaultSongTags,
+      lyrics: l.defaultSongLyrics,
+      created: Date.now()
+    }];
+    saveSongs();
+  }
+}
+
+function saveSongs() {
+  localStorage.setItem(DB_KEY, JSON.stringify(songs));
+  updateCount();
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._to);
+  el._to = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function updateCount() {
+  document.getElementById('song-count').textContent = t().songCount(songs.length);
+}
+
+function renderList(q) {
+  const lv = document.getElementById('list-view');
+  const query = (q || '').toLowerCase().trim();
+  let list = query
+    ? songs.filter(s =>
+        s.title.toLowerCase().includes(query) ||
+        (s.artist || '').toLowerCase().includes(query) ||
+        (s.tags || '').toLowerCase().includes(query) ||
+        s.lyrics.toLowerCase().includes(query)
+      )
+    : [...songs];
+  list.sort((a, b) => a.title.localeCompare(b.title));
+
+  if (!list.length) {
+    lv.innerHTML = '<div id="empty-state"><div class="e-icon">🎵</div><p>' + (query ? t().emptySearch(q) : t().emptyNew) + '</p></div>';
+    return;
+  }
+
+  lv.innerHTML = list.map(s => {
+    const tags = (s.tags || '').split(',').map(x => x.trim()).filter(Boolean);
+    return '<div class="song-card" data-id="' + s.id + '">' +
+      '<div class="sc-title">' + esc(s.title || t().noTitle) + '</div>' +
+      '<div class="sc-meta">' + esc(s.artist || t().unknownArtist) + '</div>' +
+      (tags.length ? '<div class="sc-tags">' + tags.map(x => '<span class="sc-tag">' + esc(x) + '</span>').join('') + '</div>' : '') +
+      '</div>';
+  }).join('');
+
+  lv.querySelectorAll('.song-card').forEach(el => {
+    el.addEventListener('click', () => openSong(el.dataset.id));
+  });
+}
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openSong(id) {
+  currentId = id;
+  isEditing = false;
+  showPanel(false);
+  renderPanel();
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+function showPanel(editing) {
+  isEditing = editing;
+  document.getElementById('view-content').style.display = editing ? 'none' : 'block';
+  document.getElementById('edit-content').style.display = editing ? 'flex' : 'none';
+  document.getElementById('panel-actions').style.display = editing ? 'flex' : 'none';
+  document.getElementById('btn-edit-toggle').textContent = editing ? t().preview : t().edit;
+}
+
+function renderPanel() {
+  const song = songs.find(s => s.id === currentId);
+  if (!song) return;
+  document.getElementById('panel-title').textContent = song.title || t().noTitle;
+
+  const tags = (song.tags || '').split(',').map(x => x.trim()).filter(Boolean);
+  document.getElementById('view-content').innerHTML =
+    '<h2>' + esc(song.title || t().noTitle) + '</h2>' +
+    '<div class="vc-artist">' + esc(song.artist || '') + '</div>' +
+    '<div class="vc-tags">' + tags.map(x => '<span class="sc-tag">' + esc(x) + '</span>').join('') + '</div>' +
+    '<pre class="vc-lyrics">' + esc(song.lyrics || '') + '</pre>';
+
+  document.getElementById('edit-content').innerHTML =
+    '<div class="field"><label>' + t().labelTitle + '</label>' +
+    '<input id="e-title" value="' + esc(song.title) + '" placeholder="' + t().placeholderTitle + '" /></div>' +
+    '<div class="field"><label>' + t().labelArtist + '</label>' +
+    '<input id="e-artist" value="' + esc(song.artist) + '" placeholder="' + t().placeholderArtist + '" /></div>' +
+    '<div class="field"><label>' + t().labelTags + '</label>' +
+    '<input id="e-tags" value="' + esc(song.tags) + '" placeholder="' + t().placeholderTags + '" /></div>' +
+    '<div class="field"><label>' + t().labelLyrics + '</label>' +
+    '<textarea id="e-lyrics">' + esc(song.lyrics) + '</textarea></div>';
+}
+
+function saveEdit() {
+  const song = songs.find(s => s.id === currentId);
+  if (!song) return;
+  song.title = (document.getElementById('e-title').value || '').trim() || t().noTitle;
+  song.artist = (document.getElementById('e-artist').value || '').trim();
+  song.tags = (document.getElementById('e-tags').value || '').trim();
+  song.lyrics = document.getElementById('e-lyrics').value || '';
+  saveSongs();
+  showPanel(false);
+  renderPanel();
+  renderList(document.getElementById('search').value);
+  toast(t().toastSaved);
+}
+
+function deleteSong() {
+  if (!confirm(t().confirmDelete)) return;
+  songs = songs.filter(s => s.id !== currentId);
+  saveSongs();
+  closePanel();
+  renderList(document.getElementById('search').value);
+  toast(t().toastDeleted);
+}
+
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('open');
+  currentId = null;
+  isEditing = false;
+}
+
+function newSong() {
+  const song = { id: uid(), title: '', artist: '', tags: '', lyrics: '', created: Date.now() };
+  songs.push(song);
+  saveSongs();
+  currentId = song.id;
+  isEditing = true;
+  renderPanel();
+  showPanel(true);
+  document.getElementById('detail-panel').classList.add('open');
+  setTimeout(() => { const el = document.getElementById('e-title'); if (el) el.focus(); }, 350);
+}
+
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(songs, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'songbook_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  toast(t().toastBackup);
+}
+
+document.getElementById('btn-new').addEventListener('click', newSong);
+document.getElementById('btn-lang').addEventListener('click', toggleLang);
+document.getElementById('btn-back').addEventListener('click', closePanel);
+document.getElementById('btn-edit-toggle').addEventListener('click', () => {
+  if (isEditing) {
+    showPanel(false);
+    renderPanel();
+  } else {
+    const song = songs.find(s => s.id === currentId);
+    if (!song) return;
+    showPanel(true);
+    document.getElementById('e-title').value = song.title || '';
+    document.getElementById('e-artist').value = song.artist || '';
+    document.getElementById('e-tags').value = song.tags || '';
+    document.getElementById('e-lyrics').value = song.lyrics || '';
+  }
+});
+document.getElementById('btn-save').addEventListener('click', saveEdit);
+document.getElementById('btn-delete').addEventListener('click', deleteSong);
+document.getElementById('search').addEventListener('input', e => renderList(e.target.value));
+document.getElementById('btn-export').addEventListener('click', exportBackup);
+
+let startX = 0;
+document.getElementById('detail-panel').addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+document.getElementById('detail-panel').addEventListener('touchend', e => {
+  if (e.changedTouches[0].clientX - startX > 80) closePanel();
+}, { passive: true });
+
+loadSongs();
+applyLang();
+</script>
+</body>
+</html>
